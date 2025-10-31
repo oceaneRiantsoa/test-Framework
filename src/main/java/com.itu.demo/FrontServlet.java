@@ -1,27 +1,14 @@
 package com.itu.demo;
 
 import java.io.*;
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.List;
 import javax.servlet.ServletException;
 import javax.servlet.http.*;
 
 public class FrontServlet extends HttpServlet {
     private String message;
-    private List<String> annotatedUrls = new ArrayList<>();
 
-    @Override
     public void init() {
         message = "hi!";
-        try {
-            Class<?> c = UrlTest.class;
-            for (Method m : c.getDeclaredMethods()) {
-                Url ann = m.getAnnotation(Url.class);
-                if (ann != null) annotatedUrls.add(ann.value());
-            }
-        } catch (Throwable t) {
-        }
     }
 
     protected void processRequest(HttpServletRequest request, HttpServletResponse response)
@@ -43,7 +30,9 @@ public class FrontServlet extends HttpServlet {
 
         if (isResource) {
             String resourcePath = (String) request.getAttribute("resourcePath");
-            if (resourcePath == null || resourcePath.isEmpty()) resourcePath = rel;
+            if (resourcePath == null || resourcePath.isEmpty()) {
+                resourcePath = rel;
+            }
             if (!resourcePath.startsWith("/")) resourcePath = "/" + resourcePath;
 
             try (InputStream in = getServletContext().getResourceAsStream(resourcePath)) {
@@ -55,15 +44,20 @@ public class FrontServlet extends HttpServlet {
                 if (mime == null) mime = "application/octet-stream";
                 response.setContentType(mime);
                 response.setStatus(HttpServletResponse.SC_OK);
-                try (OutputStream out = response.getOutputStream()) {
-                    byte[] buf = new byte[8192];
-                    int r;
-                    while ((r = in.read(buf)) != -1) out.write(buf, 0, r);
+
+                // Correction : le deuxième try/catch n'est pas nécessaire ici
+                OutputStream out = response.getOutputStream();
+                byte[] buf = new byte[8192];
+                int r;
+                while ((r = in.read(buf)) != -1) {
+                    out.write(buf, 0, r);
                 }
+                out.close();
             }
             return;
         }
 
+        // comportement dynamique par défaut
         response.setContentType("text/html");
         response.setStatus(HttpServletResponse.SC_OK);
         try (PrintWriter out = response.getWriter()) {
@@ -75,12 +69,16 @@ public class FrontServlet extends HttpServlet {
 
     @Override
     public void doGet(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException { processRequest(request, response); }
+            throws ServletException, IOException {
+        processRequest(request, response);
+    }
 
     @Override
     public void doPost(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException { processRequest(request, response); }
+            throws ServletException, IOException {
+        processRequest(request, response);
+    }
 
-    @Override
-    public void destroy() { }
+    public void destroy() {
+    }
 }
