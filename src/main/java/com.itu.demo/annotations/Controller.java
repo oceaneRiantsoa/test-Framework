@@ -1,14 +1,12 @@
 package com.itu.demo.annotations;
 
-import java.lang.annotation.Documented;
-import static java.lang.annotation.ElementType.TYPE;
-import static java.lang.annotation.RetentionPolicy.RUNTIME;
 import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.lang.annotation.ElementType;
 
-@Documented
-@Retention(RUNTIME)
-@Target(TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.TYPE)
 public @interface Controller {
     String value() default "";
 }

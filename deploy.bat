@@ -46,7 +46,7 @@ copy /y "%BUILD_DIR%\%APP_NAME%.war" "%TOMCAT_WEBAPPS%\" >nul
 
 REM === TEST SPRINT 2BIS ===
 cd build\WEB-INF\classes
-java com.itu.demo.tools.ControllerTest
+java com.itu.demo.test.TestController
 cd ..\..\..
 pause
 

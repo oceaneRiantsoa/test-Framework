@@ -1,84 +1,83 @@
 package com.itu.demo;
 
-import java.io.*;
-import javax.servlet.ServletException;
+import javax.servlet.*;
 import javax.servlet.http.*;
+import java.io.*;
+import java.util.HashMap;
+import java.lang.reflect.Method; 
+import com.itu.demo.Mapping;
 
 public class FrontServlet extends HttpServlet {
-    private String message;
+    private HashMap<String, Mapping> mappingUrls = new HashMap<>();
 
-    public void init() {
-        message = "hi!";
+    @Override
+    public void init() throws ServletException {
+        super.init();
+        try {
+            // Test des méthodes annotées
+            Class<?> testClass = Class.forName("com.itu.demo.test.TestController");
+            for (Method method : testClass.getDeclaredMethods()) {
+                if (method.isAnnotationPresent(Url.class)) {
+                    Url urlAnnotation = method.getAnnotation(Url.class);
+                    String urlPath = urlAnnotation.value();
+                    mappingUrls.put(urlPath, new Mapping(testClass.getName(), method.getName()));
+                    System.out.println("Mapped: " + urlPath + " -> " + method.getName());
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
-    protected void processRequest(HttpServletRequest request, HttpServletResponse response)
+    protected void processRequest(HttpServletRequest request, HttpServletResponse response) 
             throws ServletException, IOException {
-
+        response.setContentType("text/html;charset=UTF-8");
+        
         String uri = request.getRequestURI();
-        String context = request.getContextPath();
-        String rel = uri.substring(Math.min(context.length(), uri.length()));
-        if (rel.isEmpty()) rel = "/";
+        String contextPath = request.getContextPath();
+        String url = uri.substring(contextPath.length());
 
-        // priorité à l'attribut posé par le Filter, sinon détection par extension
-        boolean isResource = false;
-        Object attr = request.getAttribute("isResource");
-        if (attr instanceof Boolean) {
-            isResource = (Boolean) attr;
-        } else {
-            isResource = rel.matches(".*\\.(css|js|png|jpg|jpeg|gif|ico|svg|html|htm)$");
+        // Sprint 1 et 1bis - Gestion des fichiers statiques
+        if (url.contains(".")) {
+            InputStream is = getServletContext().getResourceAsStream(url);
+            if (is != null) {
+                String mimeType = getServletContext().getMimeType(url);
+                response.setContentType(mimeType != null ? mimeType : "application/octet-stream");
+                
+                OutputStream os = response.getOutputStream();  // Utiliser OutputStream au lieu de PrintWriter
+                byte[] buffer = new byte[1024];
+                int length;
+                while ((length = is.read(buffer)) > 0) {
+                    os.write(buffer, 0, length);
+                }
+                return;
+            }
         }
 
-        if (isResource) {
-            String resourcePath = (String) request.getAttribute("resourcePath");
-            if (resourcePath == null || resourcePath.isEmpty()) {
-                resourcePath = rel;
-            }
-            if (!resourcePath.startsWith("/")) resourcePath = "/" + resourcePath;
-
-            try (InputStream in = getServletContext().getResourceAsStream(resourcePath)) {
-                if (in == null) {
-                    response.sendError(HttpServletResponse.SC_NOT_FOUND);
-                    return;
-                }
-                String mime = getServletContext().getMimeType(resourcePath);
-                if (mime == null) mime = "application/octet-stream";
-                response.setContentType(mime);
-                response.setStatus(HttpServletResponse.SC_OK);
-
-                // Correction : le deuxième try/catch n'est pas nécessaire ici
-                OutputStream out = response.getOutputStream();
-                byte[] buf = new byte[8192];
-                int r;
-                while ((r = in.read(buf)) != -1) {
-                    out.write(buf, 0, r);
-                }
-                out.close();
-            }
-            return;
-        }
-
-        // comportement dynamique par défaut
-        response.setContentType("text/html");
-        response.setStatus(HttpServletResponse.SC_OK);
-        try (PrintWriter out = response.getWriter()) {
+        // Sprint 3 - Gestion des URLs mappées
+        PrintWriter out = response.getWriter();
+        Mapping mapping = mappingUrls.get(url);
+        if (mapping != null) {
             out.println("<html><body>");
-            out.println("<h1>" + message + "</h1>");
+            out.println("<h2>URL mappée trouvée !</h2>");
+            out.println("Classe : " + mapping.getClassName() + "<br>");
+            out.println("Méthode : " + mapping.getMethod());
+            out.println("</body></html>");
+        } else {
+            out.println("<html><body>");
+            out.println("<h2>URL appelée : " + url + "</h2>");
+            out.println("Aucune méthode associée à cette URL");
             out.println("</body></html>");
         }
     }
 
-    @Override
-    public void doGet(HttpServletRequest request, HttpServletResponse response)
+    protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         processRequest(request, response);
     }
 
-    @Override
-    public void doPost(HttpServletRequest request, HttpServletResponse response)
+    protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         processRequest(request, response);
-    }
-
-    public void destroy() {
     }
 }
