@@ -5,22 +5,13 @@
              http://xmlns.jcp.org/xml/ns/javaee/web-app_4_0.xsd"
          version="4.0">
 
-    <filter>
-        <filter-name>ResourceFilter</filter-name>
-        <filter-class>com.itu.demo.ResourceFilter</filter-class>
-    </filter>
-    <filter-mapping>
-        <filter-name>ResourceFilter</filter-name>
-        <url-pattern>/*</url-pattern>
-    </filter-mapping>
-
-    <servlet>
+      <servlet>
         <servlet-name>FrontServlet</servlet-name>
         <servlet-class>com.itu.demo.FrontServlet</servlet-class>
     </servlet>
     <servlet-mapping>
         <servlet-name>FrontServlet</servlet-name>
-        <url-pattern>/*</url-pattern>
+        <url-pattern>/</url-pattern>
     </servlet-mapping>
 
 

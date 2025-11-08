@@ -1,0 +1,17 @@
+Sprint 1 :
+nimporte quelle uri
+Sprint 1 bis :
+url avec un fichier existant-> hitany
+Sprint 2 :
+annotation au niveau method, testena amin method, ao amin main no atao verification hoe annote amle annotationMethod v le method
+Sprint 2 bis :
+annotation au niv class: annotation pour des controllers, creation de 3 controllers (dans Test), 2 annotes 1 non, atao any amin main d'abord fa aveo affichena web (FrontServlet) :
+SCANENAAAAAAA (dans FRAMEWORK) hoe quels controllers no annote a AnnotationController
+Sprint 3 :
+mtape url d SCANENAAAAAAA (dans FRAMEWORK) si url est associee a une de nos methods, si oui :
+printena le method a laquelle l'url est associe et la classe a laquelle elle appartient (la method)
+asiana hashmap route (key: url, value: class Mapping), servletContext sprint 4 :
+micreer fonction annote @ annotation method mireturn string
+- affichena le string avec reflect sprint 4 bis :
+Mamorona Class Modelview avec attr String view-"test. jsp" ohatra
+tu tapes une url annote method, jerena type de retour string affichena le resultat, raha modelview le type de retour d dispatch any amle getview -› makany amin test. jsp d affiche le contenu any test. jsp
