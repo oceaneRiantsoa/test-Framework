@@ -44,11 +44,7 @@ REM Déployer sur Tomcat
 if exist "%TOMCAT_WEBAPPS%\%APP_NAME%" rmdir /s /q "%TOMCAT_WEBAPPS%\%APP_NAME%"
 copy /y "%BUILD_DIR%\%APP_NAME%.war" "%TOMCAT_WEBAPPS%\" >nul
 
-REM === TEST SPRINT 2BIS ===
-cd build\WEB-INF\classes
-java com.itu.demo.test.TestController
-cd ..\..\..
-pause
+
 
 echo Déploiement terminé. Vérifiez Tomcat logs si la ressource n'est pas disponible.
 ENDLOCAL
