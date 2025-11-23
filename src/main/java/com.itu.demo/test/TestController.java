@@ -1,15 +1,14 @@
 package com.itu.demo.test;
 
 import com.itu.demo.Url;
+import com.itu.demo.ModelView;
 
 public class TestController {
-    @Url("/hello")
-    public String sayHello() {
-        return "Hello from test method!";
-    }
-
-    @Url("/test")
-    public void testMethod() {
-        System.out.println("Test method called");
+    @Url("/user")
+    public ModelView user() {
+        ModelView mv = new ModelView("User.jsp");
+        mv.addItem("username", "Oceane");
+        mv.addItem("role", "admin");
+        return mv;
     }
 }
