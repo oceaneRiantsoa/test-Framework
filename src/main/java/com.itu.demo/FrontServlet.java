@@ -4,6 +4,7 @@ import javax.servlet.*;
 import javax.servlet.http.*;
 import java.io.*;
 import java.util.HashMap;
+import java.util.Map;
 import java.lang.reflect.Method;
 
 public class FrontServlet extends HttpServlet {
@@ -13,11 +14,9 @@ public class FrontServlet extends HttpServlet {
     public void init() throws ServletException {
         super.init();
         try {
-            // Ajoute ici tous tes contrôleurs à scanner
             Class<?>[] controllers = {
                 Class.forName("com.itu.demo.test.TestController"),
                 Class.forName("com.itu.demo.test.TestController2")
-                // Ajoute d'autres contrôleurs ici si besoin
             };
             for (Class<?> ctrlClass : controllers) {
                 for (Method method : ctrlClass.getDeclaredMethods()) {
@@ -56,7 +55,7 @@ public class FrontServlet extends HttpServlet {
             }
         }
 
-        // Sprint 3, 4, 4-bis : mapping, réflexion, ModelView
+        // Sprint 3, 4, 4-bis, 5 : mapping, réflexion, ModelView, données vers la vue
         PrintWriter out = response.getWriter();
         Mapping mapping = mappingUrls.get(url);
         if (mapping != null) {
@@ -72,10 +71,13 @@ public class FrontServlet extends HttpServlet {
                 }
                 if (method != null) {
                     Object result = method.invoke(instance);
-                    // Sprint 4-bis : dispatcher si retour ModelView
+                    // Sprint 5 : dispatcher si retour ModelView et envoyer les attributs
                     if (result instanceof ModelView) {
-                        String vue = ((ModelView) result).getView();
-                        RequestDispatcher dispatcher = request.getRequestDispatcher(vue);
+                        ModelView mv = (ModelView) result;
+                        for (Map.Entry<String, Object> entry : mv.getData().entrySet()) {
+                            request.setAttribute(entry.getKey(), entry.getValue());
+                        }
+                        RequestDispatcher dispatcher = request.getRequestDispatcher("/" + mv.getView());
                         dispatcher.forward(request, response);
                         return;
                     }

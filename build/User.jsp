@@ -5,5 +5,7 @@
 </head>
 <body>
     <h2>Bienvenue sur la page User.jsp !</h2>
+    <p>Nom d'utilisateur : ${username}</p>
+    <p>Rôle : ${role}</p>
 </body>
 </html>
