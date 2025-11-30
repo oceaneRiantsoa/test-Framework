@@ -1,5 +1,6 @@
 package com.itu.demo;
 
+import com.itu.demo.annotations.RequestParam;
 import javax.servlet.*;
 import javax.servlet.http.*;
 import java.io.*;
@@ -72,23 +73,24 @@ public class FrontServlet extends HttpServlet {
                 }
                 
 
-                // ...dans processRequest...
+                
         if (method != null) {
             Class<?>[] paramTypes = method.getParameterTypes();
             java.lang.reflect.Parameter[] parameters = method.getParameters();
             Object[] paramValues = new Object[paramTypes.length];
 
         for (int i = 0; i < parameters.length; i++) {
-            String paramName = parameters[i].getName();
-            String value = request.getParameter(paramName);
-        if (paramTypes[i] == int.class || paramTypes[i] == Integer.class) {
-            paramValues[i] = (value != null) ? Integer.parseInt(value) : 0;
-        } else {
-            paramValues[i] = value;
-        }
+    RequestParam reqParam = parameters[i].getAnnotation(RequestParam.class);
+    String paramKey = (reqParam != null) ? reqParam.value() : parameters[i].getName();
+    String value = request.getParameter(paramKey);
+    if (paramTypes[i] == int.class || paramTypes[i] == Integer.class) {
+        paramValues[i] = (value != null) ? Integer.parseInt(value) : 0;
+    } else {
+        paramValues[i] = value;
     }
+}
         Object result = method.invoke(instance, paramValues);
-    // ...suite logique Sprint 4/5...
+   
 
                 // Sprint 5 : dispatcher si retour ModelView et envoyer les attributs
                     if (result instanceof ModelView) {
