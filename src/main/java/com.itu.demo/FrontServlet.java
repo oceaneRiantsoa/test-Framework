@@ -16,7 +16,9 @@ public class FrontServlet extends HttpServlet {
         try {
             Class<?>[] controllers = {
                 Class.forName("com.itu.demo.test.TestController"),
-                Class.forName("com.itu.demo.test.TestController2")
+                Class.forName("com.itu.demo.test.TestController2"),
+                Class.forName("com.itu.demo.test.DeptController")
+                // Ajoute d'autres contrôleurs ici si besoin
             };
             for (Class<?> ctrlClass : controllers) {
                 for (Method method : ctrlClass.getDeclaredMethods()) {
@@ -55,7 +57,6 @@ public class FrontServlet extends HttpServlet {
             }
         }
 
-        // Sprint 3, 4, 4-bis, 5 : mapping, réflexion, ModelView, données vers la vue
         PrintWriter out = response.getWriter();
         Mapping mapping = mappingUrls.get(url);
         if (mapping != null) {
@@ -69,9 +70,27 @@ public class FrontServlet extends HttpServlet {
                         break;
                     }
                 }
-                if (method != null) {
-                    Object result = method.invoke(instance);
-                    // Sprint 5 : dispatcher si retour ModelView et envoyer les attributs
+                
+
+                // ...dans processRequest...
+        if (method != null) {
+            Class<?>[] paramTypes = method.getParameterTypes();
+            java.lang.reflect.Parameter[] parameters = method.getParameters();
+            Object[] paramValues = new Object[paramTypes.length];
+
+        for (int i = 0; i < parameters.length; i++) {
+            String paramName = parameters[i].getName();
+            String value = request.getParameter(paramName);
+        if (paramTypes[i] == int.class || paramTypes[i] == Integer.class) {
+            paramValues[i] = (value != null) ? Integer.parseInt(value) : 0;
+        } else {
+            paramValues[i] = value;
+        }
+    }
+        Object result = method.invoke(instance, paramValues);
+    // ...suite logique Sprint 4/5...
+
+                // Sprint 5 : dispatcher si retour ModelView et envoyer les attributs
                     if (result instanceof ModelView) {
                         ModelView mv = (ModelView) result;
                         for (Map.Entry<String, Object> entry : mv.getData().entrySet()) {
