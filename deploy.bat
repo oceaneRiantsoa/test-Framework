@@ -20,7 +20,7 @@ mkdir %BUILD_DIR%\WEB-INF\lib
 REM Compilation
 echo Compilation des fichiers Java...
 dir /b /s %SRC_DIR%\*.java > sources.txt
-javac -cp "%SERVLET_API_JAR%" -d %BUILD_DIR%\WEB-INF\classes @sources.txt
+javac -parameters -cp "%SERVLET_API_JAR%" -d %BUILD_DIR%\WEB-INF\classes @sources.txt
 if errorlevel 1 (
   echo Erreur de compilation
   del sources.txt
