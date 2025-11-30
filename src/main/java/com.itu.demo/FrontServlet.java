@@ -18,7 +18,8 @@ public class FrontServlet extends HttpServlet {
             Class<?>[] controllers = {
                 Class.forName("com.itu.demo.test.TestController"),
                 Class.forName("com.itu.demo.test.TestController2"),
-                Class.forName("com.itu.demo.test.DeptController")
+                Class.forName("com.itu.demo.test.DeptController"),
+                Class.forName("com.itu.demo.test.EtudiantController")
                 // Ajoute d'autres contrôleurs ici si besoin
             };
             for (Class<?> ctrlClass : controllers) {
@@ -26,7 +27,7 @@ public class FrontServlet extends HttpServlet {
                     if (method.isAnnotationPresent(Url.class)) {
                         Url urlAnnotation = method.getAnnotation(Url.class);
                         String urlPath = urlAnnotation.value();
-                        mappingUrls.put(urlPath, new Mapping(ctrlClass.getName(), method.getName()));
+                        mappingUrls.put(urlPath, new Mapping(ctrlClass.getName(), method.getName(), urlPath));
                     }
                 }
             }
@@ -59,7 +60,19 @@ public class FrontServlet extends HttpServlet {
         }
 
         PrintWriter out = response.getWriter();
-        Mapping mapping = mappingUrls.get(url);
+        Mapping mapping = null;
+        String matchedPattern = null;
+
+        // Sprint 6-ter : recherche du mapping avec variable dans l'URL
+        for (Map.Entry<String, Mapping> entry : mappingUrls.entrySet()) {
+            String pattern = entry.getKey();
+            if (matchUrl(pattern, url)) {
+                mapping = entry.getValue();
+                matchedPattern = pattern;
+                break;
+            }
+        }
+
         if (mapping != null) {
             try {
                 Class<?> clazz = Class.forName(mapping.getClassName());
@@ -71,28 +84,31 @@ public class FrontServlet extends HttpServlet {
                         break;
                     }
                 }
-                
 
-                
-        if (method != null) {
-            Class<?>[] paramTypes = method.getParameterTypes();
-            java.lang.reflect.Parameter[] parameters = method.getParameters();
-            Object[] paramValues = new Object[paramTypes.length];
+                if (method != null) {
+                    Class<?>[] paramTypes = method.getParameterTypes();
+                    java.lang.reflect.Parameter[] parameters = method.getParameters();
+                    Object[] paramValues = new Object[paramTypes.length];
 
-        for (int i = 0; i < parameters.length; i++) {
-    RequestParam reqParam = parameters[i].getAnnotation(RequestParam.class);
-    String paramKey = (reqParam != null) ? reqParam.value() : parameters[i].getName();
-    String value = request.getParameter(paramKey);
-    if (paramTypes[i] == int.class || paramTypes[i] == Integer.class) {
-        paramValues[i] = (value != null) ? Integer.parseInt(value) : 0;
-    } else {
-        paramValues[i] = value;
-    }
-}
-        Object result = method.invoke(instance, paramValues);
-   
+                    // Sprint 6-ter : extraction des variables de l'URL
+                    Map<String, String> pathVars = extractPathVariables(matchedPattern, url);
 
-                // Sprint 5 : dispatcher si retour ModelView et envoyer les attributs
+                    for (int i = 0; i < parameters.length; i++) {
+                        RequestParam reqParam = parameters[i].getAnnotation(RequestParam.class);
+                        String paramKey = (reqParam != null) ? reqParam.value() : parameters[i].getName();
+                        String value = pathVars.get(paramKey);
+                        if (value == null) value = request.getParameter(paramKey);
+                        if (value == null) paramValues[i] = null;
+                        else if (paramTypes[i] == int.class || paramTypes[i] == Integer.class) {
+                            paramValues[i] = Integer.parseInt(value);
+                        } else {
+                            paramValues[i] = value;
+                        }
+                    }
+
+                    Object result = method.invoke(instance, paramValues);
+
+                    // Sprint 5 : dispatcher si retour ModelView et envoyer les attributs
                     if (result instanceof ModelView) {
                         ModelView mv = (ModelView) result;
                         for (Map.Entry<String, Object> entry : mv.getData().entrySet()) {
@@ -120,6 +136,32 @@ public class FrontServlet extends HttpServlet {
             out.println("Aucune méthode associée à cette URL");
             out.println("</body></html>");
         }
+    }
+
+    // Méthode utilitaire pour matcher les patterns d'URL avec variables
+    private boolean matchUrl(String pattern, String url) {
+        String[] patParts = pattern.split("/");
+        String[] urlParts = url.split("/");
+        if (patParts.length != urlParts.length) return false;
+        for (int i = 0; i < patParts.length; i++) {
+            if (patParts[i].startsWith("{") && patParts[i].endsWith("}")) continue;
+            if (!patParts[i].equals(urlParts[i])) return false;
+        }
+        return true;
+    }
+
+    // Méthode utilitaire pour extraire les variables de l'URL
+    private Map<String, String> extractPathVariables(String pattern, String url) {
+        Map<String, String> vars = new HashMap<>();
+        String[] patParts = pattern.split("/");
+        String[] urlParts = url.split("/");
+        for (int i = 0; i < patParts.length; i++) {
+            if (patParts[i].startsWith("{") && patParts[i].endsWith("}") && i < urlParts.length) {
+                String varName = patParts[i].substring(1, patParts[i].length() - 1);
+                vars.put(varName, urlParts[i]);
+            }
+        }
+        return vars;
     }
 
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
