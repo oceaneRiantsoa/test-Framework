@@ -15,3 +15,8 @@ micreer fonction annote @ annotation method mireturn string
 - affichena le string avec reflect sprint 4 bis :
 Mamorona Class Modelview avec attr String view-"test. jsp" ohatra
 tu tapes une url annote method, jerena type de retour string affichena le resultat, raha modelview le type de retour d dispatch any amle getview -› makany amin test. jsp d affiche le contenu any test. jsp
+
+
+Sprint9: possibilite d exposer api rest , retourner json ,tsy miraharaha ModelView fa ilay data no alaina 
+         tsy manao dispatch vers jsp fa mamerina json 
+         code: status succes 200, error 404, 500 data[]

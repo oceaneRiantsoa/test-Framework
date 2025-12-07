@@ -19,14 +19,25 @@ public class FrontServlet extends HttpServlet {
                 Class.forName("com.itu.demo.test.TestController"),
                 Class.forName("com.itu.demo.test.TestController2"),
                 Class.forName("com.itu.demo.test.DeptController"),
-                Class.forName("com.itu.demo.test.EtudiantController")
+                Class.forName("com.itu.demo.test.EtudiantController"),
+                Class.forName("com.itu.demo.test.FormController")
                 // Ajoute d'autres contrôleurs ici si besoin
             };
             for (Class<?> ctrlClass : controllers) {
                 for (Method method : ctrlClass.getDeclaredMethods()) {
-                    if (method.isAnnotationPresent(Url.class)) {
-                        Url urlAnnotation = method.getAnnotation(Url.class);
+                    if (method.isAnnotationPresent(com.itu.demo.Url.class)) {
+                        com.itu.demo.Url urlAnnotation = method.getAnnotation(com.itu.demo.Url.class);
                         String urlPath = urlAnnotation.value();
+                        mappingUrls.put(urlPath, new Mapping(ctrlClass.getName(), method.getName(), urlPath));
+                    }
+                    if (method.isAnnotationPresent(com.itu.demo.annotations.GetMapping.class)) {
+                        com.itu.demo.annotations.GetMapping getAnn = method.getAnnotation(com.itu.demo.annotations.GetMapping.class);
+                        String urlPath = getAnn.value();
+                        mappingUrls.put(urlPath, new Mapping(ctrlClass.getName(), method.getName(), urlPath));
+                    }
+                    if (method.isAnnotationPresent(com.itu.demo.annotations.PostMapping.class)) {
+                        com.itu.demo.annotations.PostMapping postAnn = method.getAnnotation(com.itu.demo.annotations.PostMapping.class);
+                        String urlPath = postAnn.value();
                         mappingUrls.put(urlPath, new Mapping(ctrlClass.getName(), method.getName(), urlPath));
                     }
                 }
@@ -42,6 +53,7 @@ public class FrontServlet extends HttpServlet {
         String uri = request.getRequestURI();
         String contextPath = request.getContextPath();
         String url = uri.substring(contextPath.length());
+        String httpMethod = request.getMethod();
 
         // Sprint 1 & 1bis : fichiers statiques
         if (url.contains(".")) {
@@ -63,13 +75,24 @@ public class FrontServlet extends HttpServlet {
         Mapping mapping = null;
         String matchedPattern = null;
 
-        // Sprint 6-ter : recherche du mapping avec variable dans l'URL
+        // Sprint 6-ter & 7 : recherche du mapping avec variable dans l'URL et méthode HTTP
         for (Map.Entry<String, Mapping> entry : mappingUrls.entrySet()) {
             String pattern = entry.getKey();
-            if (matchUrl(pattern, url)) {
-                mapping = entry.getValue();
-                matchedPattern = pattern;
-                break;
+            Mapping map = entry.getValue();
+            Method method = getMethodFromMapping(map);
+            if (method != null) {
+                boolean match = matchUrl(pattern, url);
+                boolean isGet = httpMethod.equalsIgnoreCase("GET") && (
+                        method.isAnnotationPresent(com.itu.demo.annotations.GetMapping.class)
+                        || method.isAnnotationPresent(com.itu.demo.Url.class));
+                boolean isPost = httpMethod.equalsIgnoreCase("POST") && (
+                        method.isAnnotationPresent(com.itu.demo.annotations.PostMapping.class)
+                        || method.isAnnotationPresent(com.itu.demo.Url.class));
+                if (match && (isGet || isPost)) {
+                    mapping = map;
+                    matchedPattern = pattern;
+                    break;
+                }
             }
         }
 
@@ -162,6 +185,21 @@ public class FrontServlet extends HttpServlet {
             }
         }
         return vars;
+    }
+
+    // Méthode utilitaire pour retrouver la méthode à partir du Mapping
+    private Method getMethodFromMapping(Mapping mapping) {
+        try {
+            Class<?> clazz = Class.forName(mapping.getClassName());
+            for (Method m : clazz.getDeclaredMethods()) {
+                if (m.getName().equals(mapping.getMethod())) {
+                    return m;
+                }
+            }
+        } catch (Exception e) {
+            // ignore
+        }
+        return null;
     }
 
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
