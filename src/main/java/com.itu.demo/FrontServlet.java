@@ -7,6 +7,7 @@ import java.io.*;
 import java.util.HashMap;
 import java.util.Map;
 import java.lang.reflect.Method;
+import java.lang.reflect.Field;
 
 public class FrontServlet extends HttpServlet {
     private HashMap<String, Mapping> mappingUrls = new HashMap<>();
@@ -21,7 +22,8 @@ public class FrontServlet extends HttpServlet {
                 Class.forName("com.itu.demo.test.DeptController"),
                 Class.forName("com.itu.demo.test.EtudiantController"),
                 Class.forName("com.itu.demo.test.FormController"),
-                Class.forName("com.itu.demo.test.TestFormController")  // Sprint 8
+                Class.forName("com.itu.demo.test.TestFormController"),
+                Class.forName("com.itu.demo.test.EmpController")  // Sprint 8bis
             };
             for (Class<?> ctrlClass : controllers) {
                 for (Method method : ctrlClass.getDeclaredMethods()) {
@@ -127,15 +129,35 @@ public class FrontServlet extends HttpServlet {
                                 formData.put(key, values.length == 1 ? values[0] : values);
                             }
                             paramValues[i] = formData;
-                        } else {
+                        } 
+                        // Sprint 8bis : binding automatique d'objet métier
+                        else if (!isPrimitiveOrWrapper(paramTypes[i]) && !paramTypes[i].equals(String.class)) {
+                            Object obj = paramTypes[i].getDeclaredConstructor().newInstance();
+                            String prefix = parameters[i].getName() + ".";
+                            java.util.Map<String, String[]> paramMap = request.getParameterMap();
+                            for (Map.Entry<String, String[]> entry : paramMap.entrySet()) {
+                                String key = entry.getKey();
+                                if (key.startsWith(prefix)) {
+                                    String fieldName = key.substring(prefix.length());
+                                    String value = entry.getValue()[0];
+                                    setFieldValue(obj, fieldName, value);
+                                }
+                            }
+                            paramValues[i] = obj;
+                        } 
+                        else {
                             // Sprint 6 & 6-bis : injection normale des paramètres
                             RequestParam reqParam = parameters[i].getAnnotation(RequestParam.class);
                             String paramKey = (reqParam != null) ? reqParam.value() : parameters[i].getName();
                             String value = pathVars.get(paramKey);
                             if (value == null) value = request.getParameter(paramKey);
-                            if (value == null) paramValues[i] = null;
+                            if (value == null) paramValues[i] = getDefaultValue(paramTypes[i]);
                             else if (paramTypes[i] == int.class || paramTypes[i] == Integer.class) {
                                 paramValues[i] = Integer.parseInt(value);
+                            } else if (paramTypes[i] == double.class || paramTypes[i] == Double.class) {
+                                paramValues[i] = Double.parseDouble(value);
+                            } else if (paramTypes[i] == boolean.class || paramTypes[i] == Boolean.class) {
+                                paramValues[i] = Boolean.parseBoolean(value);
                             } else {
                                 paramValues[i] = value;
                             }
@@ -165,13 +187,47 @@ public class FrontServlet extends HttpServlet {
                 out.println("Nom : " + mapping.getMethod() + "<br>");
                 out.println("</body></html>");
             } catch (Exception e) {
-                out.println("<pre>" + e + "</pre>");
+                out.println("<pre>");
+                e.printStackTrace(out);
+                out.println("</pre>");
             }
         } else {
             out.println("<html><body>");
             out.println("Aucune méthode associée à cette URL");
             out.println("</body></html>");
         }
+    }
+
+    // Sprint 8bis : méthode pour setter une propriété d'un objet via réflexion
+    private void setFieldValue(Object obj, String fieldName, String value) throws Exception {
+        Field field = obj.getClass().getDeclaredField(fieldName);
+        field.setAccessible(true);
+        Class<?> fieldType = field.getType();
+        if (fieldType == int.class || fieldType == Integer.class) {
+            field.set(obj, Integer.parseInt(value));
+        } else if (fieldType == double.class || fieldType == Double.class) {
+            field.set(obj, Double.parseDouble(value));
+        } else if (fieldType == boolean.class || fieldType == Boolean.class) {
+            field.set(obj, Boolean.parseBoolean(value));
+        } else {
+            field.set(obj, value);
+        }
+    }
+
+    // Vérifie si un type est primitif ou wrapper
+    private boolean isPrimitiveOrWrapper(Class<?> type) {
+        return type.isPrimitive() || 
+               type == Integer.class || type == Double.class || type == Boolean.class ||
+               type == Long.class || type == Float.class || type == Short.class ||
+               type == Byte.class || type == Character.class;
+    }
+
+    // Retourne une valeur par défaut pour les types primitifs
+    private Object getDefaultValue(Class<?> type) {
+        if (type == int.class || type == Integer.class) return 0;
+        if (type == double.class || type == Double.class) return 0.0;
+        if (type == boolean.class || type == Boolean.class) return false;
+        return null;
     }
 
     // Méthode utilitaire pour matcher les patterns d'URL avec variables
