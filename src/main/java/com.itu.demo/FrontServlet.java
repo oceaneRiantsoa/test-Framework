@@ -20,8 +20,8 @@ public class FrontServlet extends HttpServlet {
                 Class.forName("com.itu.demo.test.TestController2"),
                 Class.forName("com.itu.demo.test.DeptController"),
                 Class.forName("com.itu.demo.test.EtudiantController"),
-                Class.forName("com.itu.demo.test.FormController")
-                // Ajoute d'autres contrôleurs ici si besoin
+                Class.forName("com.itu.demo.test.FormController"),
+                Class.forName("com.itu.demo.test.TestFormController")  // Sprint 8
             };
             for (Class<?> ctrlClass : controllers) {
                 for (Method method : ctrlClass.getDeclaredMethods()) {
@@ -117,15 +117,28 @@ public class FrontServlet extends HttpServlet {
                     Map<String, String> pathVars = extractPathVariables(matchedPattern, url);
 
                     for (int i = 0; i < parameters.length; i++) {
-                        RequestParam reqParam = parameters[i].getAnnotation(RequestParam.class);
-                        String paramKey = (reqParam != null) ? reqParam.value() : parameters[i].getName();
-                        String value = pathVars.get(paramKey);
-                        if (value == null) value = request.getParameter(paramKey);
-                        if (value == null) paramValues[i] = null;
-                        else if (paramTypes[i] == int.class || paramTypes[i] == Integer.class) {
-                            paramValues[i] = Integer.parseInt(value);
+                        // Sprint 8 : si le paramètre est de type Map, injecter les paramètres de la requête
+                        if (paramTypes[i] == Map.class || paramTypes[i] == java.util.Map.class) {
+                            Map<String, Object> formData = new HashMap<>();
+                            java.util.Map<String, String[]> paramMap = request.getParameterMap();
+                            for (Map.Entry<String, String[]> entry : paramMap.entrySet()) {
+                                String key = entry.getKey();
+                                String[] values = entry.getValue();
+                                formData.put(key, values.length == 1 ? values[0] : values);
+                            }
+                            paramValues[i] = formData;
                         } else {
-                            paramValues[i] = value;
+                            // Sprint 6 & 6-bis : injection normale des paramètres
+                            RequestParam reqParam = parameters[i].getAnnotation(RequestParam.class);
+                            String paramKey = (reqParam != null) ? reqParam.value() : parameters[i].getName();
+                            String value = pathVars.get(paramKey);
+                            if (value == null) value = request.getParameter(paramKey);
+                            if (value == null) paramValues[i] = null;
+                            else if (paramTypes[i] == int.class || paramTypes[i] == Integer.class) {
+                                paramValues[i] = Integer.parseInt(value);
+                            } else {
+                                paramValues[i] = value;
+                            }
                         }
                     }
 

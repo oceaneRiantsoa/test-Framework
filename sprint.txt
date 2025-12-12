@@ -5,10 +5,10 @@ url avec un fichier existant-> hitany
 Sprint 2 :
 annotation au niveau method, testena amin method, ao amin main no atao verification hoe annote amle annotationMethod v le method
 Sprint 2 bis :
-annotation au niv class: annotation pour des controllers, creation de 3 controllers (dans Test), 2 annotes 1 non, atao any amin main d'abord fa aveo affichena web (FrontServlet) :
-SCANENAAAAAAA (dans FRAMEWORK) hoe quels controllers no annote a AnnotationController
+annotation au niv class: annotatio n pour des controllers, creation de 3 controllers (dans Test), 2 annotes 1 non, atao any amin main d'abord fa aveo affichena web (FrontServlet) :
+SCANENA (dans FRAMEWORK) hoe quels controllers no annote a AnnotationController
 Sprint 3 :
-mtape url d SCANENAAAAAAA (dans FRAMEWORK) si url est associee a une de nos methods, si oui :
+mtape url d SCANENa(dans FRAMEWORK) si url est associee a une de nos methods, si oui :
 printena le method a laquelle l'url est associe et la classe a laquelle elle appartient (la method)
 asiana hashmap route (key: url, value: class Mapping), servletContext sprint 4 :
 micreer fonction annote @ annotation method mireturn string
@@ -20,3 +20,6 @@ tu tapes une url annote method, jerena type de retour string affichena le result
 Sprint9: possibilite d exposer api rest , retourner json ,tsy miraharaha ModelView fa ilay data no alaina 
          tsy manao dispatch vers jsp fa mamerina json 
          code: status succes 200, error 404, 500 data[]
+
+
+        
