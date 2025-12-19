@@ -5,6 +5,7 @@ import com.itu.demo.annotations.RestApi;
 import com.itu.demo.model.ApiResponse;
 import javax.servlet.*;
 import javax.servlet.http.*;
+import javax.servlet.annotation.MultipartConfig;
 import java.io.*;
 import java.util.HashMap;
 import java.util.Map;
@@ -12,6 +13,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Field;
 import com.google.gson.Gson;
 
+@MultipartConfig
 public class FrontServlet extends HttpServlet {
     private HashMap<String, Mapping> mappingUrls = new HashMap<>();
 
@@ -27,7 +29,8 @@ public class FrontServlet extends HttpServlet {
                 Class.forName("com.itu.demo.test.FormController"),
                 Class.forName("com.itu.demo.test.TestFormController"),
                 Class.forName("com.itu.demo.test.EmpController"),
-                Class.forName("com.itu.demo.test.ApiTestController")
+                Class.forName("com.itu.demo.test.ApiTestController"),
+                Class.forName("com.itu.demo.test.FileUploadController")
             };
             for (Class<?> ctrlClass : controllers) {
                 for (Method method : ctrlClass.getDeclaredMethods()) {
@@ -122,28 +125,58 @@ public class FrontServlet extends HttpServlet {
                     // Sprint 6-ter : extraction des variables de l'URL
                     Map<String, String> pathVars = extractPathVariables(matchedPattern, url);
 
-                    for (int i = 0; i < parameters.length; i++) {
-                        // Sprint 8 : si le paramètre est de type Map, injecter les paramètres de la requête
-                        if (paramTypes[i] == Map.class || paramTypes[i] == java.util.Map.class) {
-                            Map<String, Object> formData = new HashMap<>();
-                            java.util.Map<String, String[]> paramMap = request.getParameterMap();
-                            for (Map.Entry<String, String[]> entry : paramMap.entrySet()) {
-                                String key = entry.getKey();
-                                String[] values = entry.getValue();
-                                formData.put(key, values.length == 1 ? values[0] : values);
+                    // Sprint 10 : extraction des fichiers uploadés et des données du formulaire
+                    Map<String, FileUpload> uploadedFiles = new HashMap<>();
+                    Map<String, Object> formData = new HashMap<>();
+                    
+                    // Vérifier si la requête contient des fichiers (multipart)
+                    String contentType = request.getContentType();
+                    if (contentType != null && contentType.toLowerCase().startsWith("multipart/form-data")) {
+                        for (Part part : request.getParts()) {
+                            String fieldName = part.getName();
+                            String fileName = part.getSubmittedFileName();
+                            
+                            if (fileName != null && !fileName.isEmpty()) {
+                                // C'est un fichier
+                                InputStream fileContent = part.getInputStream();
+                                byte[] fileBytes = fileContent.readAllBytes();
+                                uploadedFiles.put(fieldName, new FileUpload(fileName, fileBytes, part.getContentType()));
+                            } else {
+                                // C'est un champ normal
+                                InputStream is = part.getInputStream();
+                                String value = new String(is.readAllBytes(), "UTF-8");
+                                formData.put(fieldName, value);
                             }
-                            paramValues[i] = formData;
+                        }
+                    } else {
+                        // Paramètres normaux (non-multipart)
+                        java.util.Map<String, String[]> paramMap = request.getParameterMap();
+                        for (Map.Entry<String, String[]> entry : paramMap.entrySet()) {
+                            String key = entry.getKey();
+                            String[] values = entry.getValue();
+                            formData.put(key, values.length == 1 ? values[0] : values);
+                        }
+                    }
+
+                    for (int i = 0; i < parameters.length; i++) {
+                        // Sprint 10 & 8 : si le paramètre est de type Map, injecter soit les fichiers soit les données
+                        if (paramTypes[i] == Map.class || paramTypes[i] == java.util.Map.class) {
+                            RequestParam reqParam = parameters[i].getAnnotation(RequestParam.class);
+                            if (reqParam != null && reqParam.value().equals("files")) {
+                                paramValues[i] = uploadedFiles;
+                            } else {
+                                paramValues[i] = formData;
+                            }
                         } 
                         // Sprint 8bis : binding automatique d'objet métier
                         else if (!isPrimitiveOrWrapper(paramTypes[i]) && !paramTypes[i].equals(String.class)) {
                             Object obj = paramTypes[i].getDeclaredConstructor().newInstance();
                             String prefix = parameters[i].getName() + ".";
-                            java.util.Map<String, String[]> paramMap = request.getParameterMap();
-                            for (Map.Entry<String, String[]> entry : paramMap.entrySet()) {
+                            for (Map.Entry<String, Object> entry : formData.entrySet()) {
                                 String key = entry.getKey();
                                 if (key.startsWith(prefix)) {
                                     String fieldName = key.substring(prefix.length());
-                                    String value = entry.getValue()[0];
+                                    String value = entry.getValue().toString();
                                     setFieldValue(obj, fieldName, value);
                                 }
                             }
@@ -154,6 +187,9 @@ public class FrontServlet extends HttpServlet {
                             RequestParam reqParam = parameters[i].getAnnotation(RequestParam.class);
                             String paramKey = (reqParam != null) ? reqParam.value() : parameters[i].getName();
                             String value = pathVars.get(paramKey);
+                            if (value == null && formData.containsKey(paramKey)) {
+                                value = formData.get(paramKey).toString();
+                            }
                             if (value == null) value = request.getParameter(paramKey);
                             if (value == null) paramValues[i] = getDefaultValue(paramTypes[i]);
                             else if (paramTypes[i] == int.class || paramTypes[i] == Integer.class) {
