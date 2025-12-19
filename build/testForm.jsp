@@ -4,6 +4,7 @@
     <title>Formulaire Test Sprint 8</title>
 </head>
 <body>
+    <h1>ETU3088</h1>
     <h2>Formulaire de test (Sprint 8)</h2>
     <form method="post" action="${pageContext.request.contextPath}/test/form">
         <label>Nom : <input type="text" name="nom" /></label><br>

@@ -232,8 +232,9 @@ Avantages :
 
 
 sprint 9: 
-possibilité pour exposer en api rest, retourner json tsy miraharaha hoe modelView ve fa le data no alaina; ajout annotation "web annontation",
+possibilité pour exposer en api rest, retourner json tsy miraharaha hoe modelView ve fa le data no alaina; ajout annotation "web annontation",ccreer une annotation rest api et annoter la methode sur cela
 status: success, error
+
 data: 
 MAMPIASA LIBRAIRIE
 maka departement , (liste infini)

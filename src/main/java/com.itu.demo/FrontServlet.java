@@ -1,6 +1,8 @@
 package com.itu.demo;
 
 import com.itu.demo.annotations.RequestParam;
+import com.itu.demo.annotations.RestApi;
+import com.itu.demo.model.ApiResponse;
 import javax.servlet.*;
 import javax.servlet.http.*;
 import java.io.*;
@@ -8,6 +10,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.lang.reflect.Method;
 import java.lang.reflect.Field;
+import com.google.gson.Gson;
 
 public class FrontServlet extends HttpServlet {
     private HashMap<String, Mapping> mappingUrls = new HashMap<>();
@@ -23,7 +26,8 @@ public class FrontServlet extends HttpServlet {
                 Class.forName("com.itu.demo.test.EtudiantController"),
                 Class.forName("com.itu.demo.test.FormController"),
                 Class.forName("com.itu.demo.test.TestFormController"),
-                Class.forName("com.itu.demo.test.EmpController")  // Sprint 8bis
+                Class.forName("com.itu.demo.test.EmpController"),
+                Class.forName("com.itu.demo.test.ApiTestController")
             };
             for (Class<?> ctrlClass : controllers) {
                 for (Method method : ctrlClass.getDeclaredMethods()) {
@@ -165,6 +169,25 @@ public class FrontServlet extends HttpServlet {
                     }
 
                     Object result = method.invoke(instance, paramValues);
+
+                     // Sprint 9 : si la méthode est annotée @RestApi, retourner JSON
+                    if (method.isAnnotationPresent(RestApi.class)) {
+                        response.setContentType("application/json;charset=UTF-8");
+                        Gson gson = new Gson();
+                        String json = gson.toJson(result);
+                        
+                        // Définir le status HTTP selon la réponse
+                        if (result instanceof ApiResponse) {
+                            ApiResponse apiResponse = (ApiResponse) result;
+                            response.setStatus(apiResponse.getStatus());
+                        } else {
+                            response.setStatus(HttpServletResponse.SC_OK);
+                        }
+                        
+                        out.print(json);
+                        return;
+                    }
+                        
 
                     // Sprint 5 : dispatcher si retour ModelView et envoyer les attributs
                     if (result instanceof ModelView) {
