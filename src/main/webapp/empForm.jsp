@@ -4,6 +4,7 @@
     <title>Formulaire Employé</title>
 </head>
 <body>
+    <h1>ETU3088</h1>
     <h2>Formulaire Employé (Sprint 8bis)</h2>
     <form action="${pageContext.request.contextPath}/emp/save" method="post">
         <label>Nom : <input type="text" name="emp.name" placeholder="Nom" /></label><br>

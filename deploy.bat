@@ -17,10 +17,18 @@ mkdir %BUILD_DIR%\WEB-INF
 mkdir %BUILD_DIR%\WEB-INF\classes
 mkdir %BUILD_DIR%\WEB-INF\lib
 
-REM Compilation
+REM Copier les bibliothèques tierces (Gson, etc.) AVANT la compilation
+echo Copie des bibliotheques...
+xcopy /y "%LIB_DIR%\*.jar" "%BUILD_DIR%\WEB-INF\lib\" >nul
+if errorlevel 1 (
+  echo Erreur lors de la copie des bibliotheques
+  exit /b 1
+)
+
+REM Compilation avec toutes les libs dans le classpath
 echo Compilation des fichiers Java...
 dir /b /s %SRC_DIR%\*.java > sources.txt
-javac -parameters -cp "%SERVLET_API_JAR%" -d %BUILD_DIR%\WEB-INF\classes @sources.txt
+javac -parameters -cp "%SERVLET_API_JAR%;%LIB_DIR%\*" -d %BUILD_DIR%\WEB-INF\classes @sources.txt
 if errorlevel 1 (
   echo Erreur de compilation
   del sources.txt
@@ -28,23 +36,32 @@ if errorlevel 1 (
 )
 del sources.txt
 
-REM Copier librairies tierces (si besoin)
-REM xcopy /y lib\*.jar %BUILD_DIR%\WEB-INF\lib\
-
 REM Copier ressources web
+echo Copie des ressources web...
 xcopy "%WEB_DIR%\*" "%BUILD_DIR%\" /s /e /y >nul
 
 REM Créer le WAR
+echo Creation du WAR...
 cd %BUILD_DIR%
 if exist %APP_NAME%.war del %APP_NAME%.war
-jar -cvf %APP_NAME%.war *
+jar -cvf %APP_NAME%.war * >nul
 cd ..
 
 REM Déployer sur Tomcat
+echo Deploiement sur Tomcat...
 if exist "%TOMCAT_WEBAPPS%\%APP_NAME%" rmdir /s /q "%TOMCAT_WEBAPPS%\%APP_NAME%"
+if exist "%TOMCAT_WEBAPPS%\%APP_NAME%.war" del "%TOMCAT_WEBAPPS%\%APP_NAME%.war"
 copy /y "%BUILD_DIR%\%APP_NAME%.war" "%TOMCAT_WEBAPPS%\" >nul
 
+echo.
+echo ========================================
+echo Deploiement termine avec succes !
+echo ========================================
+echo Application: %APP_NAME%
+echo URL: http://localhost:8081/%APP_NAME%/
+echo.
+echo Verifiez Tomcat si necessaire.
+echo ========================================
+pause
 
-
-echo Déploiement terminé. Vérifiez Tomcat logs si la ressource n'est pas disponible.
 ENDLOCAL

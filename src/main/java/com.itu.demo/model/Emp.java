@@ -5,7 +5,15 @@ public class Emp {
     private String dept;
     private int age;
 
+    // Constructeur sans argument (obligatoire)
     public Emp() {}
+
+    // Constructeur avec 3 arguments (pour le Sprint 9)
+    public Emp(String name, String dept, int age) {
+        this.name = name;
+        this.dept = dept;
+        this.age = age;
+    }
 
     public String getName() {
         return name;
