@@ -2,6 +2,7 @@ package com.itu.demo;
 
 import com.itu.demo.annotations.RequestParam;
 import com.itu.demo.annotations.RestApi;
+import com.itu.demo.annotations.Session;
 import com.itu.demo.model.ApiResponse;
 import javax.servlet.*;
 import javax.servlet.http.*;
@@ -9,6 +10,7 @@ import javax.servlet.annotation.MultipartConfig;
 import java.io.*;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Enumeration;
 import java.lang.reflect.Method;
 import java.lang.reflect.Field;
 import com.google.gson.Gson;
@@ -30,27 +32,35 @@ public class FrontServlet extends HttpServlet {
                 Class.forName("com.itu.demo.test.TestFormController"),
                 Class.forName("com.itu.demo.test.EmpController"),
                 Class.forName("com.itu.demo.test.ApiTestController"),
-                Class.forName("com.itu.demo.test.FileUploadController")
+                Class.forName("com.itu.demo.test.FileUploadController"),
+                Class.forName("com.itu.demo.test.SessionController")
             };
             for (Class<?> ctrlClass : controllers) {
+                System.out.println("[FrontServlet] Scanning controller: " + ctrlClass.getName());
                 for (Method method : ctrlClass.getDeclaredMethods()) {
                     if (method.isAnnotationPresent(com.itu.demo.Url.class)) {
                         com.itu.demo.Url urlAnnotation = method.getAnnotation(com.itu.demo.Url.class);
                         String urlPath = urlAnnotation.value();
-                        mappingUrls.put(urlPath, new Mapping(ctrlClass.getName(), method.getName(), urlPath));
+                        // @Url supporte GET et POST
+                        mappingUrls.put("GET:" + urlPath, new Mapping(ctrlClass.getName(), method.getName(), urlPath));
+                        mappingUrls.put("POST:" + urlPath, new Mapping(ctrlClass.getName(), method.getName(), urlPath));
+                        System.out.println("[FrontServlet] Mapped @Url: " + urlPath + " -> " + method.getName());
                     }
                     if (method.isAnnotationPresent(com.itu.demo.annotations.GetMapping.class)) {
                         com.itu.demo.annotations.GetMapping getAnn = method.getAnnotation(com.itu.demo.annotations.GetMapping.class);
                         String urlPath = getAnn.value();
-                        mappingUrls.put(urlPath, new Mapping(ctrlClass.getName(), method.getName(), urlPath));
+                        mappingUrls.put("GET:" + urlPath, new Mapping(ctrlClass.getName(), method.getName(), urlPath));
+                        System.out.println("[FrontServlet] Mapped @GetMapping: GET:" + urlPath + " -> " + method.getName());
                     }
                     if (method.isAnnotationPresent(com.itu.demo.annotations.PostMapping.class)) {
                         com.itu.demo.annotations.PostMapping postAnn = method.getAnnotation(com.itu.demo.annotations.PostMapping.class);
                         String urlPath = postAnn.value();
-                        mappingUrls.put(urlPath, new Mapping(ctrlClass.getName(), method.getName(), urlPath));
+                        mappingUrls.put("POST:" + urlPath, new Mapping(ctrlClass.getName(), method.getName(), urlPath));
+                        System.out.println("[FrontServlet] Mapped @PostMapping: POST:" + urlPath + " -> " + method.getName());
                     }
                 }
             }
+            System.out.println("[FrontServlet] Total mappings: " + mappingUrls.size());
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -84,24 +94,23 @@ public class FrontServlet extends HttpServlet {
         Mapping mapping = null;
         String matchedPattern = null;
 
-        // Sprint 6-ter & 7 : recherche du mapping avec variable dans l'URL et méthode HTTP
+        // Sprint 6-ter & 7 : recherche du mapping avec clé composite (METHOD:URL)
         for (Map.Entry<String, Mapping> entry : mappingUrls.entrySet()) {
-            String pattern = entry.getKey();
+            String key = entry.getKey();
             Mapping map = entry.getValue();
-            Method method = getMethodFromMapping(map);
-            if (method != null) {
-                boolean match = matchUrl(pattern, url);
-                boolean isGet = httpMethod.equalsIgnoreCase("GET") && (
-                        method.isAnnotationPresent(com.itu.demo.annotations.GetMapping.class)
-                        || method.isAnnotationPresent(com.itu.demo.Url.class));
-                boolean isPost = httpMethod.equalsIgnoreCase("POST") && (
-                        method.isAnnotationPresent(com.itu.demo.annotations.PostMapping.class)
-                        || method.isAnnotationPresent(com.itu.demo.Url.class));
-                if (match && (isGet || isPost)) {
-                    mapping = map;
-                    matchedPattern = pattern;
-                    break;
-                }
+            
+            // Extraire la méthode HTTP et le pattern de la clé (ex: "GET:/login")
+            String[] keyParts = key.split(":", 2);
+            if (keyParts.length != 2) continue;
+            
+            String keyMethod = keyParts[0];
+            String pattern = keyParts[1];
+            
+            // Vérifier si la méthode HTTP correspond et l'URL match
+            if (httpMethod.equalsIgnoreCase(keyMethod) && matchUrl(pattern, url)) {
+                mapping = map;
+                matchedPattern = pattern;
+                break;
             }
         }
 
@@ -158,9 +167,23 @@ public class FrontServlet extends HttpServlet {
                         }
                     }
 
+                    // Sprint 11 : préparer la copie de la session pour injection
+                    Map<String, Object> sessionCopy = new HashMap<>();
+                    HttpSession httpSession = request.getSession(true);
+                    Enumeration<String> sessionNames = httpSession.getAttributeNames();
+                    while (sessionNames.hasMoreElements()) {
+                        String name = sessionNames.nextElement();
+                        sessionCopy.put(name, httpSession.getAttribute(name));
+                    }
+
                     for (int i = 0; i < parameters.length; i++) {
+                        // Sprint 11 : si le paramètre est annoté @Session et de type Map
+                        Session sessionAnnot = parameters[i].getAnnotation(Session.class);
+                        if (sessionAnnot != null && (paramTypes[i] == Map.class || paramTypes[i] == java.util.Map.class)) {
+                            paramValues[i] = sessionCopy;
+                        }
                         // Sprint 10 & 8 : si le paramètre est de type Map, injecter soit les fichiers soit les données
-                        if (paramTypes[i] == Map.class || paramTypes[i] == java.util.Map.class) {
+                        else if (paramTypes[i] == Map.class || paramTypes[i] == java.util.Map.class) {
                             RequestParam reqParam = parameters[i].getAnnotation(RequestParam.class);
                             if (reqParam != null && reqParam.value().equals("files")) {
                                 paramValues[i] = uploadedFiles;
@@ -205,6 +228,20 @@ public class FrontServlet extends HttpServlet {
                     }
 
                     Object result = method.invoke(instance, paramValues);
+
+                    // Sprint 11 : synchroniser les modifications de la session
+                    // Supprimer les attributs qui ne sont plus dans sessionCopy
+                    Enumeration<String> currentSessionNames = httpSession.getAttributeNames();
+                    while (currentSessionNames.hasMoreElements()) {
+                        String name = currentSessionNames.nextElement();
+                        if (!sessionCopy.containsKey(name)) {
+                            httpSession.removeAttribute(name);
+                        }
+                    }
+                    // Ajouter/Mettre à jour les attributs de sessionCopy
+                    for (Map.Entry<String, Object> entry : sessionCopy.entrySet()) {
+                        httpSession.setAttribute(entry.getKey(), entry.getValue());
+                    }
 
                      // Sprint 9 : si la méthode est annotée @RestApi, retourner JSON
                     if (method.isAnnotationPresent(RestApi.class)) {
@@ -252,7 +289,15 @@ public class FrontServlet extends HttpServlet {
             }
         } else {
             out.println("<html><body>");
-            out.println("Aucune méthode associée à cette URL");
+            out.println("<h2>Aucune méthode associée à cette URL</h2>");
+            out.println("<p>URL demandée: " + url + "</p>");
+            out.println("<p>Méthode HTTP: " + httpMethod + "</p>");
+            out.println("<h3>URLs disponibles:</h3>");
+            out.println("<ul>");
+            for (Map.Entry<String, Mapping> entry : mappingUrls.entrySet()) {
+                out.println("<li>" + entry.getKey() + " -> " + entry.getValue().getMethod() + "</li>");
+            }
+            out.println("</ul>");
             out.println("</body></html>");
         }
     }
