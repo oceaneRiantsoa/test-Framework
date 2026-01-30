@@ -228,17 +228,147 @@ Avantages :
 - Permet de recevoir plusieurs types d’arguments (objets, primitives) dans une même méthode.
 - Facilite le développement de formulaires avancés et le respect du pattern MVC.
 
+## Sprint 9 – Exposition d’API REST et retour JSON
+
+Objectif :
+- Permettre à un contrôleur d’exposer une méthode en API REST qui retourne directement du JSON, sans passer par ModelView.
+- Ajout d’une annotation `@Web` (ou `@Rest`) pour signaler qu’une méthode retourne une réponse API.
+- La réponse JSON contient au minimum : `status` (success/error) et `data` (objet ou liste).
+
+Fonctionnement :
+- Lorsqu’une méthode de contrôleur est annotée avec `@Web`, le FrontServlet sérialise automatiquement la valeur de retour en JSON.
+- Si la méthode retourne un objet ou une liste, le JSON généré inclut `{ "status": "success", "data": ... }`.
+- En cas d’exception, le FrontServlet retourne `{ "status": "error", "message": "...", "data": null }`.
+
+Exemple annotation et contrôleur :
+```java
+@Web("/api/emp/all")
+public List<Emp> getAllEmps() {
+    return empService.findAll();
+}
+
+@Web("/api/emp/one")
+public Emp getEmp(@RequestParam("id") int id) {
+    return empService.findById(id);
+}
+```
+
+Exemple de réponse JSON :
+```json
+{
+  "status": "success",
+  "data": [
+    { "name": "Alice", "dept": "IT", "age": 30 },
+    { "name": "Bob", "dept": "RH", "age": 25 }
+  ]
+}
+```
+
+Points clés :
+- Le FrontServlet détecte l’annotation `@Web` et change le content-type en `application/json`.
+- La sérialisation peut utiliser une librairie comme Jackson ou une méthode utilitaire simple.
+- Plus besoin de ModelView pour les routes REST : seule la donnée métier compte.
+
+Avantages :
+- Facile d’exposer des endpoints RESTful.
+- Structure de réponse standardisée (status + data).
+- Séparation claire entre vues HTML (ModelView) et API (JSON).
+
+Réf : [`com.itu.demo.annotations.Web`](src/main/java/com.itu.demo/annotations/Web.java), [`com.itu.demo.FrontServlet`](src/main/java/com.itu.demo/FrontServlet.java)
+
+## Sprint 10 – Upload de fichiers et injection dans les contrôleurs
+
+Sprint 10 introduit la gestion de l’upload de fichiers via les formulaires HTML.  
+Le FrontServlet détecte si la requête contient un fichier (multipart/form-data) et extrait les fichiers envoyés grâce à `request.getParts()`.  
+Chaque fichier est encapsulé dans un objet (ex : `FileUpload`) contenant le nom, le contenu (byte[]), et le type MIME.
+
+Fonctionnement :
+- Lorsqu’un formulaire envoie un fichier, le FrontServlet sépare les données classiques (Map<String, Object>) et les fichiers (Map<String, FileUpload>).
+- Les méthodes de contrôleur peuvent recevoir ces deux maps en argument, ou directement un objet `FileUpload` si besoin.
+- Exemple de signature :
+```java
+@PostMapping("/file/upload")
+public ModelView uploadFile(Map<String, Object> formData, Map<String, FileUpload> files) {
+    // Traitement ici
+}
+```
+- Le contrôleur peut alors accéder à la description, au fichier, et retourner une vue de résultat.
+
+Avantages :
+- Permet de gérer facilement les uploads de fichiers dans l’application.
+- Injection automatique des fichiers et des autres champs du formulaire.
+
+---
+
+## Sprint 11 – Gestion avancée de la session dans les contrôleurs
+
+Sprint 11 améliore la gestion de la session utilisateur côté contrôleur.  
+Les méthodes peuvent recevoir une Map représentant la session (copie de la HttpSession) pour lire, ajouter ou supprimer des attributs de session.
+
+Fonctionnement :
+- Le FrontServlet détecte si un paramètre de la méthode est annoté `@Session` et de type `Map<String, Object>`.
+- Il injecte une copie de la session courante dans ce paramètre.
+- Après l’exécution de la méthode, les modifications apportées à la Map sont synchronisées avec la vraie session HTTP.
+- Exemple :
+```java
+@GetMapping("/profil")
+public ModelView profil(@Session Map<String, Object> session) {
+    String username = (String) session.get("username");
+    // ...
+}
+```
+
+Avantages :
+- Permet de manipuler la session sans dépendre directement de l’API Servlet.
+- Facilite les tests et la maintenance du code.
+
+---
+
+## Sprint 11bis – Sécurité basée sur les rôles et annotations
+
+Sprint 11bis introduit la gestion fine des droits d’accès via des annotations sur les méthodes de contrôleur.
+
+Fonctionnement :
+- Annotation `@AuthRequired` : la méthode nécessite une authentification.
+- Annotation `@Role("chef")` : la méthode n’est accessible qu’aux utilisateurs ayant le rôle "chef".
+- Sans annotation : la méthode est accessible à tous (rôle du développeur).
+- Le FrontServlet vérifie les droits avant d’exécuter la méthode et redirige ou affiche une erreur si besoin.
+
+Exemple :
+```java
+@Role("chef")
+@GetMapping("/admin/reports")
+public ModelView rapportsChef(@Session Map<String, Object> session) {
+    // Accessible uniquement aux chefs
+}
+```
+
+Avantages :
+- Sécurisation centralisée et déclarative des routes.
+- Contrôle précis des accès selon le rôle utilisateur.
+
+---
+
+sprint10: on va faire un upload de fichier via un formulaire et attaché un fichier, comment on va faire pour le mettre dans un formulaire d'action.
+Dans frontservlet, on verifie si il y a un fichier attaché ou pas: par getParts pour pour obtenir Parts[]. On obtient son nom et le bytes[], quand on appelle la methode d'action on peut y mettre le nom et les bytes[] du fichier attaché. possibilité d'avoir 2Map: un fichier et l'autre les autres données.
+
+mettre les objets en argument du controller sa atao singleton le controlleur 
+
+sprint 11: 
+ajout/recup/enlever session session :dans controller misy session (atao anaty methode pas dans httpsession)
+map(String nomSession,Object value)
+verification si mila session par les methodes porte voir si @param annoté session est de type map(String nomSession,Object value)
+, de io no mitondra session.
+parcourir variables httpsessios; (map ses = copy httpsession)
+raha miova ses de miova le map httpsession viceversa
 
 
 
-sprint 9: 
-possibilité pour exposer en api rest, retourner json tsy miraharaha hoe modelView ve fa le data no alaina; ajout annotation "web annontation",ccreer une annotation rest api et annoter la methode sur cela
-status: success, error
-
-data: 
-MAMPIASA LIBRAIRIE
-maka departement , (liste infini)
-izay objet eo no
+sprint11bis: 
+on créera une  methode d'action dans controller: on va creer une annotation qui dit seul le role chef peut l'executer, ou quand c'est anonyme sans annotation,
+1. @authRest: tsy maintsy authentifier
+2. sans annotation: role du dev
+3. @ profil : authentifier avec le profil en question
 
 
 ### Script de test mis à jour
@@ -287,17 +417,3 @@ src/main/java/com.itu.demo/
     ├── TestAnnotation.java
     └── MainTest.java
 ```
-   
-
-SPRINT 11 : (session)
-@Controller 
-Manana Controller, avy am controller te hi acceder valeur session, mametraka valeur anaty session
-Controller misy methode maka anle session dia manampy
-tsy manisy HttpSession x
-@Session type map(string, Object)
-Map no atao : Map(String, Object)
-Verifier hoe mis map Object -> tsy maintsy am ny anaran ilay variable (annotation)
-Isaky ny mi invoker methode d action mila verifiena hoe mila mandefa session ve, 
-anaty frontservlet mafatatra hoe iza no methode atsoina
-.Creer Map ses = copie HttpSession (parcourir variable anaty htttpsession)
-.Atsoina anaty fonction , par principe , raha hovaina dia miova ny frontservlet
