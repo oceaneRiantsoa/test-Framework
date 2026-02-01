@@ -3,6 +3,8 @@ package com.itu.demo;
 import com.itu.demo.annotations.RequestParam;
 import com.itu.demo.annotations.RestApi;
 import com.itu.demo.annotations.Session;
+import com.itu.demo.annotations.AuthRequired;
+import com.itu.demo.annotations.Role;
 import com.itu.demo.model.ApiResponse;
 import javax.servlet.*;
 import javax.servlet.http.*;
@@ -33,7 +35,8 @@ public class FrontServlet extends HttpServlet {
                 Class.forName("com.itu.demo.test.EmpController"),
                 Class.forName("com.itu.demo.test.ApiTestController"),
                 Class.forName("com.itu.demo.test.FileUploadController"),
-                Class.forName("com.itu.demo.test.SessionController")
+                Class.forName("com.itu.demo.test.SessionController"),
+                Class.forName("com.itu.demo.test.SecurityController")
             };
             for (Class<?> ctrlClass : controllers) {
                 System.out.println("[FrontServlet] Scanning controller: " + ctrlClass.getName());
@@ -148,12 +151,13 @@ public class FrontServlet extends HttpServlet {
                             if (fileName != null && !fileName.isEmpty()) {
                                 // C'est un fichier
                                 InputStream fileContent = part.getInputStream();
-                                byte[] fileBytes = fileContent.readAllBytes();
+                                byte[] fileBytes = readAllBytes(fileContent);
                                 uploadedFiles.put(fieldName, new FileUpload(fileName, fileBytes, part.getContentType()));
                             } else {
                                 // C'est un champ normal
                                 InputStream is = part.getInputStream();
-                                String value = new String(is.readAllBytes(), "UTF-8");
+                                byte[] valueBytes = readAllBytes(is);
+                                String value = new String(valueBytes, "UTF-8");
                                 formData.put(fieldName, value);
                             }
                         }
@@ -174,6 +178,11 @@ public class FrontServlet extends HttpServlet {
                     while (sessionNames.hasMoreElements()) {
                         String name = sessionNames.nextElement();
                         sessionCopy.put(name, httpSession.getAttribute(name));
+                    }
+
+                    // Sprint 11bis : vérification de sécurité avant exécution
+                    if (!checkMethodSecurity(method, sessionCopy, response)) {
+                        return; // Accès refusé, la réponse a été envoyée
                     }
 
                     for (int i = 0; i < parameters.length; i++) {
@@ -373,6 +382,90 @@ public class FrontServlet extends HttpServlet {
             // ignore
         }
         return null;
+    }
+
+    // Sprint 11bis : vérification de sécurité basée sur les annotations
+    private boolean checkMethodSecurity(Method method, Map<String, Object> session, HttpServletResponse response) 
+            throws IOException {
+        
+        // Vérifier @AuthRequired
+        if (method.isAnnotationPresent(AuthRequired.class)) {
+            String username = (String) session.get("username");
+            if (username == null || username.isEmpty()) {
+                // Non authentifié
+                sendSecurityError(response, "Authentification requise", 
+                    "Vous devez vous connecter pour accéder à cette ressource.", 401);
+                return false;
+            }
+        }
+        
+        // Vérifier @Role
+        if (method.isAnnotationPresent(Role.class)) {
+            String username = (String) session.get("username");
+            String userRole = (String) session.get("role");
+            Role roleAnnotation = method.getAnnotation(Role.class);
+            String requiredRole = roleAnnotation.value();
+            
+            if (username == null || username.isEmpty()) {
+                // Non authentifié
+                sendSecurityError(response, "Authentification requise", 
+                    "Vous devez vous connecter pour accéder à cette ressource.", 401);
+                return false;
+            }
+            
+            if (userRole == null || !userRole.equals(requiredRole)) {
+                // Rôle insuffisant
+                sendSecurityError(response, "Accès interdit", 
+                    "Vous n'avez pas les droits suffisants. Rôle requis: " + requiredRole, 403);
+                return false;
+            }
+        }
+        
+        return true; // Accès autorisé
+    }
+    
+    // Sprint 11bis : envoyer une page d'erreur de sécurité
+    private void sendSecurityError(HttpServletResponse response, String title, String message, int status) 
+            throws IOException {
+        response.setStatus(status);
+        response.setContentType("text/html;charset=UTF-8");
+        PrintWriter out = response.getWriter();
+        
+        out.println("<!DOCTYPE html>");
+        out.println("<html>");
+        out.println("<head>");
+        out.println("    <meta charset='UTF-8'>");
+        out.println("    <title>" + title + "</title>");
+        out.println("    <style>");
+        out.println("        body { font-family: Arial, sans-serif; max-width: 500px; margin: 100px auto; text-align: center; }");
+        out.println("        .error-box { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; padding: 30px; border-radius: 8px; }");
+        out.println("        h2 { color: #721c24; margin-bottom: 20px; }");
+        out.println("        .links { margin-top: 20px; }");
+        out.println("        .links a { color: #007bff; text-decoration: none; margin: 0 10px; padding: 10px 20px; background: #e9ecef; border-radius: 4px; }");
+        out.println("    </style>");
+        out.println("</head>");
+        out.println("<body>");
+        out.println("    <div class='error-box'>");
+        out.println("        <h2>🚫 " + title + "</h2>");
+        out.println("        <p>" + message + "</p>");
+        out.println("    </div>");
+        out.println("    <div class='links'>");
+        out.println("        <a href='/FirstServlet/login'>Se connecter</a>");
+        out.println("        <a href='javascript:history.back()'>Retour</a>");
+        out.println("    </div>");
+        out.println("</body>");
+        out.println("</html>");
+    }
+
+    // Méthode utilitaire pour lire tous les bytes d'un InputStream (compatible Java 8)
+    private byte[] readAllBytes(InputStream is) throws IOException {
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        int nRead;
+        byte[] data = new byte[1024];
+        while ((nRead = is.read(data, 0, data.length)) != -1) {
+            buffer.write(data, 0, nRead);
+        }
+        return buffer.toByteArray();
     }
 
     protected void doGet(HttpServletRequest request, HttpServletResponse response)

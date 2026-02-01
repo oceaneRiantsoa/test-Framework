@@ -43,9 +43,17 @@ public class SessionController {
         
         // Simulation de vérification (en vrai, vérifier en base)
         if (username != null && !username.isEmpty() && password != null && password.equals("1234")) {
+            // Attribuer un rôle selon l'utilisateur pour les tests
+            String role = "user"; // rôle par défaut
+            if (username.equalsIgnoreCase("admin")) {
+                role = "admin";
+            } else if (username.equalsIgnoreCase("chef")) {
+                role = "chef";
+            }
+            
             // Stocker dans la session
             session.put("username", username);
-            session.put("role", "user");
+            session.put("role", role);
             session.put("loginTime", System.currentTimeMillis());
             
             mv.addItem("success", true);
